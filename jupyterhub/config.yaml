@@ -1,0 +1,90 @@
+# This file can update the JupyterHub Helm chart's default configuration values.
+#
+# For reference see the configuration reference and default values, but make
+# sure to refer to the Helm chart version of interest to you!
+#
+# Introduction to YAML:     https://www.youtube.com/watch?v=cdLNKUoMc6c
+# Chart config reference:   https://zero-to-jupyterhub.readthedocs.io/en/stable/resources/reference.html
+# Chart default values:     https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/HEAD/jupyterhub/values.yaml
+# Available chart versions: https://hub.jupyter.org/helm-chart/
+
+# Ingress mode
+proxy:
+  service:
+    type: NodePort
+    nodePorts:
+      https: 30000  # Optional: specify a port in the range 30000-32767
+
+  https:
+    enabled: true
+    hosts:
+      - labdoc.ssr.upm.es
+    type: secret
+    secret:
+      name: jupyterhub-tls
+
+hub:
+  #podSecurityContext:
+  #  fsGroup: 1001
+
+  # Database (stores passwords)
+  db:
+    type: sqlite-pvc
+    pvc:
+      storageClassName: "nfs-sc"
+      accessModes: ["ReadWriteMany"]
+      storage: 1Gi
+
+  # Authenticator
+  config:
+    # KubeSpawner:
+      # run_as_uid: 1001
+    JupyterHub:
+      authenticator_class: nativeauthenticator.NativeAuthenticator
+      admin_access: false
+    Authenticator:
+      admin_users:
+        - administrator
+      allowed_users:
+       - grupo1
+       - grupo2
+       - grupo3
+       - grupo4
+       - grupo5
+
+# Culler (destroy non-used pods)
+cull:
+  enabled: false             # Enable or disable the culler
+  # timeout: 86400            # Idle time in seconds before culling (24 hours)
+  # every: 600                # Frequency in seconds to check for culling (default is 600 seconds)
+  # remove_named_servers: false  # Set to true to cull named servers too
+  # users: false              # Set to false to prevent user culling (pods will stay alive indefinitely)
+  # max_age: 0                # Set to 0 to disable maximum age-based culling
+
+singleuser:
+
+  uid: 1001   # Run as user with UID 1001
+
+  # NFS
+  storage:
+    capacity: 10Gi
+    dynamic:
+      storageClass: "nfs-sc"
+      pvcNameTemplate: "claim-{username}"
+
+  # Profiles (default images)
+  image:
+    name: marcosrodrigot/robomaster-notebook
+    tag: v3
+  profileList:
+
+    - display_name: "Entorno mínimo"
+      description: "Herramientas y librerías necesarias para tratar datos."
+      default: true
+
+    - display_name: "Entorno GPU"
+      description: "Herramientas y librerías necesarias para el entrenamiento e inferencia de redes neuronales."
+      kubespawner_override:
+        image: marcosrodrigot/robomaster-notebook:v3
+        extra_resource_limits:
+          nvidia.com/gpu: "1"
